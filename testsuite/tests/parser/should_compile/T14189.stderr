@@ -134,7 +134,8 @@
        [({ T14189.hs:3:11 }
          (FieldLabel
           {FastString: "f"}
-          (False)
+          (NoDuplicateRecordFields)
+          (FieldSelectors)
           {Name: T14189.f}))]))
      [(AvailTC
        {Name: T14189.MyType}
@@ -142,7 +143,8 @@
        ,{Name: T14189.NT}]
        [(FieldLabel
          {FastString: "f"}
-         (False)
+         (NoDuplicateRecordFields)
+         (FieldSelectors)
          {Name: T14189.f})])])])
   (Nothing)))
 
