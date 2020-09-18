@@ -372,6 +372,8 @@ data CtOrigin
   | ArithSeqOrigin (ArithSeqInfo GhcRn) -- [x..], [x..y] etc
   | AssocFamPatOrigin   -- When matching the patterns of an associated
                         -- family instance with that of its parent class
+                        -- IMPORTANT: These constraints will never cause errors;
+                        -- See Note [Constraints to ignore] in GHC.Tc.Errors
   | SectionOrigin
   | TupleOrigin         -- (..,..)
   | ExprSigOrigin       -- e :: ty

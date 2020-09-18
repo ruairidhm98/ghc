@@ -1147,7 +1147,7 @@ decideMonoTyVars infer_mode name_taus psigs candidates
                -- we want to find any other variables that are determined by this
                -- set, by functional dependencies or equalities. We thus use
                -- oclose to find all further variables determined by this root
-               -- set.
+               -- set. "RAE" update comments
 
              mono_tvs2 = oclose candidates mono_tvs1
 
@@ -1382,7 +1382,7 @@ pickQuantifiablePreds qtvs theta
         && (checkValidClsArgs flex_ctxt cls tys)
            -- Only quantify over predicates that checkValidType
            -- will pass!  See #10351.
-        && (no_fixed_dependencies cls tys)
+        && (no_fixed_dependencies cls tys) -- "RAE": comment this line
 
     no_fixed_dependencies cls tys
       = and [ qtvs `intersectsVarSet` tyCoVarsOfTypes fd_lhs_tys
@@ -2585,11 +2585,15 @@ floatConstraints skols given_ids ev_binds_var no_given_eqs
           -- in GHC.Tc.Solver.Monad
       ClassPred cls args
         | isIPClass cls
-        , [ip_name_strty, _ty] <- args
-        , Just ip_name <- isStrLitTy ip_name_strty
-        -> not (ip_name `elementOfUniqSet` given_ip_names)
+        , [ip_name_strty, ip_ty] <- args
+        , Just ip_name <- isStrLitTy ip_name_strty  -- should always succeed
+        -> not (isCallStackTy ip_ty) &&   -- don't float HasCallStack, as this will always be solved
+                                          -- See Note [Overview of implicit CallStacks]
+                                          -- in GHC.Tc.Types.Evidence
+           not (ip_name `elementOfUniqSet` given_ip_names)
 
         | otherwise      -> classHasFds cls
+
       _               -> False
 
     -- The set of implicit parameters bound in the enclosing implication

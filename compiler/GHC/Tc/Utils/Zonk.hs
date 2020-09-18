@@ -1833,11 +1833,6 @@ zonkCoHole env hole@(CoercionHole { ch_ref = ref, ch_co_var = cv })
               -- (undeferred) type errors. Originally, I put in a panic
               -- here, but that caused too many uses of `failIfErrsM`.
            Nothing -> do { traceTc "Zonking unfilled coercion hole" (ppr hole)
-                         ; when debugIsOn $
-                           whenNoErrs $
-                           MASSERT2( False
-                                   , text "Type-correct unfilled coercion hole"
-                                     <+> ppr hole )
                          ; cv' <- zonkCoVar cv
                          ; return $ mkCoVarCo cv' } }
                              -- This will be an out-of-scope variable, but keeping

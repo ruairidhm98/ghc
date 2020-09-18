@@ -168,6 +168,7 @@ canClassNC ev cls tys
                             -- We change the origin to IPOccOrigin so
                             -- this rule does not fire again.
                             -- See Note [Overview of implicit CallStacks]
+                            -- in GHC.Tc.Types.Evidence
 
        ; new_ev <- newWantedEvVarNC new_loc rewriters pred
 
@@ -1600,7 +1601,25 @@ representational role]. See #10534 and test case
 typecheck/should_fail/T10534.
 
 {4}: Because type variables can stand in for newtypes, we conservatively do not
-decompose AppTys over representational equality.
+decompose AppTys over representational equality. Here are two examples that
+demonstrate why we can't:
+
+   4a: newtype Phant a = MkPhant Int
+       [W] alpha Int ~R beta Bool
+
+   If we eventually solve alpha := Phant and beta := Phant, then we can solve
+   this equality by unwrapping. But it would have been disastrous to decompose
+   the wanted to produce Int ~ Bool, which is definitely insoluble.
+
+   4b: newtype Age = MkAge Int
+       [W] alpha Age ~R Maybe Int
+
+   First, a question: if we know that ty1 ~R ty2, can we conclude that
+   a ty1 ~R a ty2? Not for all a. This is precisely why we need role annotations
+   on type constructors. So, if we were to decompose, we would need to
+   decompose to [W] alpha ~R Maybe and [W] Age ~ Int. On the other hand, if we
+   later solve alpha := Maybe, then we would decompose to [W] Age ~R Int, and
+   that would be soluble.
 
 In the implementation of can_eq_nc and friends, we don't directly pattern
 match using lines like in the tables above, as those tables don't cover

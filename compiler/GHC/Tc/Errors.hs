@@ -556,9 +556,15 @@ instance Outputable ErrorItem where
 
 -- | Makes an error item from a constraint, calculating whether or not
 -- the item should be suppressed. See Note [Wanteds rewrite Wanteds]
--- in GHC.Tc.Types.Constraint
-mkErrorItem :: Ct -> TcM ErrorItem
+-- in GHC.Tc.Types.Constraint. Returns Nothing if we should just ignore
+-- a constraint. See Note [Constraints to ignore].
+mkErrorItem :: Ct -> TcM (Maybe ErrorItem)
 mkErrorItem ct
+  | AssocFamPatOrigin <- ctOrigin ct
+  = do { traceTc "Ignoring constraint:" (ppr ct)
+       ; return Nothing }   -- See Note [Constraints to ignore]
+
+  | otherwise
   = do { let loc = ctLoc ct
              flav = ctFlavour ct
 
@@ -569,11 +575,11 @@ mkErrorItem ct
                    ; return (supp, Just dest) }
            CtDerived {} -> return (False, Nothing)
 
-       ; return $ EI { ei_pred     = ctPred ct
-                     , ei_evdest   = m_evdest
-                     , ei_flavour  = flav
-                     , ei_loc      = loc
-                     , ei_suppress = suppress }}
+       ; return $ Just $ EI { ei_pred     = ctPred ct
+                            , ei_evdest   = m_evdest
+                            , ei_flavour  = flav
+                            , ei_loc      = loc
+                            , ei_suppress = suppress }}
 
 {- "RAE"
 tidyErrorItem :: TidyEnv -> ErrorItem -> ErrorItem
@@ -610,7 +616,7 @@ reportWanteds ctxt tc_lvl (WC { wc_simple = simples, wc_impl = implics
                                          , text "tidy_holes =" <+> ppr tidy_holes ])
 -}
 
-       ; tidy_items <- mapM mkErrorItem tidy_cts
+       ; tidy_items <- mapMaybeM mkErrorItem tidy_cts
        ; traceTc "reportWanteds 1" (vcat [ text "Simples =" <+> ppr simples
                                          , text "Suppress =" <+> ppr (cec_suppress ctxt)
                                          , text "tidy_cts   =" <+> ppr tidy_cts
@@ -836,6 +842,43 @@ Mechanism:
 We use the `suppress` function within reportWanteds to filter out these two
 cases, then report all other errors. Lastly, we return to these suppressed
 ones and report them only if there have been no errors so far.
+
+Note [Constraints to ignore]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Some constraints are meant only to aid the solver by unification; a failure
+to solve them is not necessarily an error to report to the user. It is critical
+that compilation is aborted elsewhere if there are any ignored constraints here;
+they will remain unfilled, and might have been used to rewrite another constraint.
+
+Currently, the constraints to ignore are:
+
+1) Constraints generated in order to unify associated type instance parameters
+   with class parameters. Here are two illustrative examples:
+
+     class C (a :: k) where
+       type F (b :: k)
+
+     instance C True where
+       type F a = Int
+
+     instance C Left where
+       type F (Left :: a -> Either a b) = Bool
+
+   In the first instance, we want to infer that `a` has type Bool. So we emit
+   a constraint unifying kappa (the guessed type of `a`) with Bool. All is well.
+
+   In the second instance, we process the associated type instance only
+   after fixing the quantified type variables of the class instance. We thus
+   have skolems a1 and b1 such that the class instance is for (Left :: a1 -> Either a1 b1).
+   Unifying a1 and b1 with a and b in the type instance will fail, but harmlessly so.
+   checkConsistentFamInst checks for this, and will fail if anything has gone
+   awry. Really the equality constraints emitted are just meant as an aid, not
+   a requirement. This is test case T13972.
+
+   We detect this case by looking for an origin of AssocFamPatOrigin; constraints
+   with this origin are dropped entirely during error message reporting.
+
+   If there is any trouble, checkValidFamInst bleats, aborting compilation.
 
 -}
 
