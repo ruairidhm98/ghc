@@ -1652,8 +1652,9 @@ solveWanteds wc@(WC { wc_simple = simples, wc_impl = implics, wc_holes = holes }
        ; (floated_eqs, implics2) <- solveNestedImplications $
                                     implics `unionBags` wc_impl wc1
 
-       ; dflags   <- getDynFlags
-       ; solved_wc <- simpl_loop 0 (solverIterations dflags) floated_eqs
+       ; dflags        <- getDynFlags
+       ; unif_happened <- getUnificationFlag
+       ; solved_wc <- simpl_loop 0 (solverIterations dflags) unif_happened
                                 (wc1 { wc_impl = implics2 })
 
        ; holes' <- simplifyHoles holes
@@ -1667,9 +1668,9 @@ solveWanteds wc@(WC { wc_simple = simples, wc_impl = implics, wc_holes = holes }
 
        ; return final_wc }
 
-simpl_loop :: Int -> IntWithInf -> Cts
+simpl_loop :: Int -> IntWithInf -> Bool
            -> WantedConstraints -> TcS WantedConstraints
-simpl_loop n limit floated_eqs wc@(WC { wc_simple = simples })
+simpl_loop n limit unif_happened wc@(WC { wc_simple = simples })
   | n `intGtLimit` limit
   = do { -- Add an error (not a warning) if we blow the limit,
          -- Typically if we blow the limit we are going to report some other error
@@ -1678,14 +1679,14 @@ simpl_loop n limit floated_eqs wc@(WC { wc_simple = simples })
          addErrTcS (hang (text "solveWanteds: too many iterations"
                    <+> parens (text "limit =" <+> ppr limit))
                 2 (vcat [ text "Unsolved:" <+> ppr wc
-                        , ppUnless (isEmptyBag floated_eqs) $
-                          text "Floated equalities:" <+> ppr floated_eqs
+--                        , ppUnless (isEmptyBag floated_eqs) $
+--                          text "Floated equalities:" <+> ppr floated_eqs
                         , text "Set limit with -fconstraint-solver-iterations=n; n=0 for no limit"
                   ]))
        ; return wc }
 
-  | not (isEmptyBag floated_eqs)
-  = simplify_again n limit True (wc { wc_simple = floated_eqs `unionBags` simples })
+  | unif_happened
+  = simplify_again n limit True wc
             -- Put floated_eqs first so they get solved first
             -- NB: the floated_eqs may include /derived/ equalities
             -- arising from fundeps inside an implication
@@ -1719,18 +1720,21 @@ simplify_again n limit no_new_given_scs
                             , int (lengthBag simples) <+> text "simples to solve" ])
        ; traceTcS "simpl_loop: wc =" (ppr wc)
 
-       ; (unifs1, wc1) <- reportUnifications $
-                          solveSimpleWanteds $
-                          simples
+       ; wc1 <- solveSimpleWanteds simples
 
+       ; (floated_eqs2, implics2) <- solveNestedImplications $
+                                     implics `unionBags` (wc_impl wc1)
+       ; unif_happened <- getUnificationFlag
+       ; simpl_loop (n+1) limit unif_happened (wc1 { wc_impl = implics2 })
+
+{-
        -- See Note [Cutting off simpl_loop]
        -- We have already tried to solve the nested implications once
        -- Try again only if we have unified some meta-variables
        -- (which is a bit like adding more givens), or we have some
        -- new Given superclasses
        ; let new_implics = wc_impl wc1
-       ; if unifs1 == 0       &&
-            no_new_given_scs  &&
+       ; if no_new_given_scs  &&
             isEmptyBag new_implics
 
            then -- Do not even try to solve the implications
@@ -1739,8 +1743,9 @@ simplify_again n limit no_new_given_scs
            else -- Try to solve the implications
                 do { (floated_eqs2, implics2) <- solveNestedImplications $
                                                  implics `unionBags` new_implics
-                   ; simpl_loop (n+1) limit floated_eqs2 (wc1 { wc_impl = implics2 })
-    } }
+                   ; simpl_loop (n+1) limit floated_eqs2 (wc1 { wc_impl = implics2 }) }
+-}
+   }
 
 solveNestedImplications :: Bag Implication
                         -> TcS (Cts, Bag Implication)
@@ -2475,8 +2480,11 @@ floatEqualities :: [TcTyVar] -> [EvId] -> EvBindsVar -> Bool
 -- Subtleties: Note [Float equalities from under a skolem binding]
 --             Note [Skolem escape]
 --             Note [What prevents a constraint from floating]
-floatEqualities skols given_ids ev_binds_var no_given_eqs
+floatEqualities skols _given_ids _ev_binds_var no_given_eqs
                 wanteds@(WC { wc_simple = simples })
+  = return (emptyBag, wanteds)   -- Note [Float Equalities out of Implications]
+
+{-
   | not no_given_eqs  -- There are some given equalities, so don't float
   = return (emptyBag, wanteds)   -- Note [Float Equalities out of Implications]
 
@@ -2486,12 +2494,13 @@ floatEqualities skols given_ids ev_binds_var no_given_eqs
          -- variables, and we /must/ see them.  Otherwise we may float
          -- constraints that mention the skolems!
          simples <- TcS.zonkSimples simples
-       ; binds   <- TcS.getTcEvBindsMap ev_binds_var
+--       ; binds   <- TcS.getTcEvBindsMap ev_binds_var
 
        -- Now we can pick the ones to float
        -- The constraints are un-flattened and de-canonicalised
        ; let (candidate_eqs, no_float_cts) = partitionBag is_float_eq_candidate simples
 
+{-
              seed_skols = mkVarSet skols     `unionVarSet`
                           mkVarSet given_ids `unionVarSet`
                           foldr add_non_flt_ct emptyVarSet no_float_cts `unionVarSet`
@@ -2502,6 +2511,8 @@ floatEqualities skols given_ids ev_binds_var no_given_eqs
              extended_skols = transCloVarSet (add_captured_ev_ids candidate_eqs) seed_skols
                  -- extended_skols contains the EvIds of all the trapped constraints
                  -- See Note [What prevents a constraint from floating] (3)
+-}
+             extended_skols = mkVarSet skols
 
              (flt_eqs, no_flt_eqs) = partitionBag (is_floatable extended_skols)
                                                   candidate_eqs
@@ -2520,14 +2531,18 @@ floatEqualities skols given_ids ev_binds_var no_given_eqs
        ; return ( flt_eqs, wanteds { wc_simple = remaining_simples } ) }
 
   where
-    add_non_flt_ct :: Ct -> VarSet -> VarSet
-    add_non_flt_ct ct acc | isDerivedCt ct = acc
-                          | otherwise      = extendVarSet acc (ctEvId ct)
+    is_floatable :: VarSet -> Ct -> Bool
+    is_floatable skols ct = tyCoVarsOfCt ct `disjointVarSet` skols
 
+{-
     is_floatable :: VarSet -> Ct -> Bool
     is_floatable skols ct
       | isDerivedCt ct = tyCoVarsOfCt ct `disjointVarSet` skols
       | otherwise      = not (ctEvId ct `elemVarSet` skols)
+
+    add_non_flt_ct :: Ct -> VarSet -> VarSet
+    add_non_flt_ct ct acc | isDerivedCt ct = acc
+                          | otherwise      = extendVarSet acc (ctEvId ct)
 
     add_captured_ev_ids :: Cts -> VarSet -> VarSet
     add_captured_ev_ids cts skols = foldr extra_skol emptyVarSet cts
@@ -2536,6 +2551,7 @@ floatEqualities skols given_ids ev_binds_var no_given_eqs
            | isDerivedCt ct                           = acc
            | tyCoVarsOfCt ct `intersectsVarSet` skols = extendVarSet acc (ctEvId ct)
            | otherwise                                = acc
+-}
 
     -- Identify which equalities are candidates for floating
     -- Float out alpha ~ ty which might be unified outside
@@ -2552,6 +2568,7 @@ floatEqualities skols given_ids ev_binds_var no_given_eqs
           Just tv1 -> isMetaTyVar tv1
                    && (not (isTyVarTyVar tv1) || isTyVarTy ty2)
           Nothing  -> False
+-}
 
 {- Note [Float equalities from under a skolem binding]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2623,17 +2640,6 @@ The "bound variables of the implication" are
 
   1. The skolem type variables `ic_skols`
 
-  2. The "given" evidence variables `ic_given`.  Example:
-         forall a. (co :: t1 ~# t2) =>  [W] co2 : (a ~# b |> co)
-     Here 'co' is bound
-
-  3. The binders of all evidence bindings in `ic_binds`. Example
-         forall a. (d :: t1 ~ t2)
-            EvBinds { (co :: t1 ~# t2) = superclass-sel d }
-            => [W] co2 : (a ~# b |> co)
-     Here `co` is gotten by superclass selection from `d`, and the
-     wanted constraint co2 must not float.
-
   4. And the evidence variable of any equality constraint (incl
      Wanted ones) whose type mentions a bound variable.  Example:
         forall k. [W] co1 :: t1 ~# t2 |> co2
@@ -2650,6 +2656,19 @@ How can (4) arise? Suppose we have (k :: *), (a :: k), and ([G} k ~ *).
 Then form an equality like (a ~ Int) we might end up with
     [W] co1 :: k ~ *
     [W] co2 :: (a |> co1) ~ Int
+
+
+VACUOUSLY TRUE --  TODO tidy up
+  2. The "given" evidence variables `ic_given`.  Example:
+         forall a. (co :: t1 ~# t2) =>  [W] co2 : (a ~# b |> co)
+     Here 'co' is bound
+
+  3. The binders of all evidence bindings in `ic_binds`. Example
+         forall a. (d :: t1 ~ t2)
+            EvBinds { (co :: t1 ~# t2) = superclass-sel d }
+            => [W] co2 : (a ~# b |> co)
+     Here `co` is gotten by superclass selection from `d`, and the
+     wanted constraint co2 must not float.
 
 
 *********************************************************************************
