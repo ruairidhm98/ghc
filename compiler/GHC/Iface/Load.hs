@@ -1121,6 +1121,7 @@ When printing export lists, we print like this:
 
 pprExport :: IfaceExport -> SDoc
 pprExport (Avail n)         = ppr n
+pprExport (AvailFL fl)      = ppr fl
 pprExport (AvailTC _ [] []) = Outputable.empty
 pprExport (AvailTC n ns0 fs)
   = case ns0 of
