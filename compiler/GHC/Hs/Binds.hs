@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-} -- Wrinkle in Note [Trees That Grow]
@@ -1229,18 +1230,17 @@ pprMinimalSig (L _ bf) = ppr (fmap unLoc bf)
 -}
 
 -- | Haskell Pattern Synonym Details
-type HsPatSynDetails pass = HsConDetails (LIdP pass) [RecordPatSynField (LIdP pass)]
+type HsPatSynDetails pass = HsConDetails (LIdP pass) [RecordPatSynField pass]
 
 -- See Note [Record PatSyn Fields]
 -- | Record Pattern Synonym Field
-data RecordPatSynField fld
+data RecordPatSynField pass
   = RecordPatSynField {
-      recordPatSynSelectorId :: fld  -- Selector name visible in rest of the file
-      , recordPatSynPatVar   :: fld
+      recordPatSynSelectorId :: FieldOcc pass  -- Selector name visible in rest of the file
+      , recordPatSynPatVar :: LIdP pass
       -- Filled in by renamer, the name used internally
-      -- by the pattern
-      } deriving (Data, Functor)
-
+      -- by the pattern (AMG TODO: should be TTG-style extension field?)
+      }
 
 
 {-
@@ -1264,20 +1264,8 @@ when we have a different name for the local and top-level binder
 the distinction between the two names clear
 
 -}
-instance Outputable a => Outputable (RecordPatSynField a) where
+instance Outputable (RecordPatSynField a) where
     ppr (RecordPatSynField { recordPatSynSelectorId = v }) = ppr v
-
-instance Foldable RecordPatSynField  where
-    foldMap f (RecordPatSynField { recordPatSynSelectorId = visible
-                                 , recordPatSynPatVar = hidden })
-      = f visible `mappend` f hidden
-
-instance Traversable RecordPatSynField where
-    traverse f (RecordPatSynField { recordPatSynSelectorId =visible
-                                  , recordPatSynPatVar = hidden })
-      = (\ sel_id pat_var -> RecordPatSynField { recordPatSynSelectorId = sel_id
-                                               , recordPatSynPatVar = pat_var })
-          <$> f visible <*> f hidden
 
 
 -- | Haskell Pattern Synonym Direction
