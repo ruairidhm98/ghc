@@ -1235,11 +1235,11 @@ type HsPatSynDetails pass = HsConDetails (LIdP pass) [RecordPatSynField pass]
 -- See Note [Record PatSyn Fields]
 -- | Record Pattern Synonym Field
 data RecordPatSynField pass
-  = RecordPatSynField {
-      recordPatSynSelectorId :: FieldOcc pass  -- Selector name visible in rest of the file
+  = RecordPatSynField
+      { recordPatSynField :: FieldOcc pass
+      -- ^ Field label visible in rest of the file
       , recordPatSynPatVar :: LIdP pass
-      -- Filled in by renamer, the name used internally
-      -- by the pattern (AMG TODO: should be TTG-style extension field?)
+      -- ^ Filled in by renamer, the name used internally by the pattern
       }
 
 
@@ -1265,7 +1265,7 @@ the distinction between the two names clear
 
 -}
 instance Outputable (RecordPatSynField a) where
-    ppr (RecordPatSynField { recordPatSynSelectorId = v }) = ppr v
+    ppr (RecordPatSynField { recordPatSynField = v }) = ppr v
 
 
 -- | Haskell Pattern Synonym Direction
