@@ -291,8 +291,8 @@ section "Int8#"
 
 primtype Int8#
 
-primop Int8ExtendOp "extendInt8#" GenPrimOp Int8# -> Int#
-primop Int8NarrowOp "narrowInt8#" GenPrimOp Int# -> Int8#
+primop Int8ToIntOp "int8ToInt#" GenPrimOp Int8# -> Int#
+primop IntToInt8Op "intToInt8#" GenPrimOp Int# -> Int8#
 
 primop Int8NegOp "negateInt8#" GenPrimOp Int8# -> Int8#
 
@@ -327,13 +327,13 @@ primop Int8NeOp "neInt8#" Compare Int8# -> Int8# -> Int#
 
 ------------------------------------------------------------------------
 section "Word8#"
-        {Operations on 8-bit unsigned integers.}
+        {Operations on 8-bit unsigned words.}
 ------------------------------------------------------------------------
 
 primtype Word8#
 
-primop Word8ExtendOp "extendWord8#" GenPrimOp Word8# -> Word#
-primop Word8NarrowOp "narrowWord8#" GenPrimOp Word# -> Word8#
+primop Word8ToWordOp "word8ToWord#" GenPrimOp Word8# -> Word#
+primop WordToWord8Op "wordToWord8#" GenPrimOp Word# -> Word8#
 
 primop Word8NotOp "notWord8#" GenPrimOp Word8# -> Word8#
 
@@ -373,8 +373,8 @@ section "Int16#"
 
 primtype Int16#
 
-primop Int16ExtendOp "extendInt16#" GenPrimOp Int16# -> Int#
-primop Int16NarrowOp "narrowInt16#" GenPrimOp Int# -> Int16#
+primop Int16ToIntOp "int16ToInt#" GenPrimOp Int16# -> Int#
+primop IntToInt16Op "intToInt16#" GenPrimOp Int# -> Int16#
 
 primop Int16NegOp "negateInt16#" GenPrimOp Int16# -> Int16#
 
@@ -409,13 +409,13 @@ primop Int16NeOp "neInt16#" Compare Int16# -> Int16# -> Int#
 
 ------------------------------------------------------------------------
 section "Word16#"
-        {Operations on 16-bit unsigned integers.}
+        {Operations on 16-bit unsigned words.}
 ------------------------------------------------------------------------
 
 primtype Word16#
 
-primop Word16ExtendOp "extendWord16#" GenPrimOp Word16# -> Word#
-primop Word16NarrowOp "narrowWord16#" GenPrimOp Word# -> Word16#
+primop Word16ToWordOp "word16ToWord#" GenPrimOp Word16# -> Word#
+primop WordToWord16Op "wordToWord16#" GenPrimOp Word# -> Word16#
 
 primop Word16NotOp "notWord16#" GenPrimOp Word16# -> Word16#
 
@@ -455,8 +455,8 @@ section "Int32#"
 
 primtype Int32#
 
-primop Int32ExtendOp "extendInt32#" GenPrimOp Int32# -> Int#
-primop Int32NarrowOp "narrowInt32#" GenPrimOp Int# -> Int32#
+primop Int32ToIntOp "int32ToInt#" GenPrimOp Int32# -> Int#
+primop IntToInt32Op "intToInt32#" GenPrimOp Int# -> Int32#
 
 ------------------------------------------------------------------------
 section "Word32#"
@@ -465,8 +465,8 @@ section "Word32#"
 
 primtype Word32#
 
-primop Word32ExtendOp "extendWord32#" GenPrimOp Word32# -> Word#
-primop Word32NarrowOp "narrowWord32#" GenPrimOp Word# -> Word32#
+primop Word32ToWordOp "word32ToWord#" GenPrimOp Word32# -> Word#
+primop WordToWord32Op "wordToWord32#" GenPrimOp Word# -> Word32#
 
 #if WORD_SIZE_IN_BITS < 64
 ------------------------------------------------------------------------
@@ -560,19 +560,19 @@ primop   IntQuotRemOp "quotRemInt#"    GenPrimOp
    {Rounds towards zero.}
    with can_fail = True
 
-primop   AndIOp   "andI#"   GenPrimOp    Int# -> Int# -> Int#
+primop   IntAndOp   "andI#"   GenPrimOp    Int# -> Int# -> Int#
    {Bitwise "and".}
    with commutable = True
 
-primop   OrIOp   "orI#"     GenPrimOp    Int# -> Int# -> Int#
+primop   IntOrOp   "orI#"     GenPrimOp    Int# -> Int# -> Int#
    {Bitwise "or".}
    with commutable = True
 
-primop   XorIOp   "xorI#"   GenPrimOp    Int# -> Int# -> Int#
+primop   IntXorOp   "xorI#"   GenPrimOp    Int# -> Int# -> Int#
    {Bitwise "xor".}
    with commutable = True
 
-primop   NotIOp   "notI#"   GenPrimOp   Int# -> Int#
+primop   IntNotOp   "notI#"   GenPrimOp   Int# -> Int#
    {Bitwise "not", also known as the binary complement.}
 
 primop   IntNegOp    "negateInt#"    GenPrimOp   Int# -> Int#
@@ -632,13 +632,13 @@ primop   IntToDoubleOp   "int2Double#"          GenPrimOp  Int# -> Double#
 primop   WordToFloatOp   "word2Float#"      GenPrimOp  Word# -> Float#
 primop   WordToDoubleOp   "word2Double#"          GenPrimOp  Word# -> Double#
 
-primop   ISllOp   "uncheckedIShiftL#" GenPrimOp  Int# -> Int# -> Int#
+primop   IntSllOp   "uncheckedIShiftL#" GenPrimOp  Int# -> Int# -> Int#
          {Shift left.  Result undefined if shift amount is not
           in the range 0 to word size - 1 inclusive.}
-primop   ISraOp   "uncheckedIShiftRA#" GenPrimOp Int# -> Int# -> Int#
+primop   IntSraOp   "uncheckedIShiftRA#" GenPrimOp Int# -> Int# -> Int#
          {Shift right arithmetic.  Result undefined if shift amount is not
           in the range 0 to word size - 1 inclusive.}
-primop   ISrlOp   "uncheckedIShiftRL#" GenPrimOp Int# -> Int# -> Int#
+primop   IntSrlOp   "uncheckedIShiftRL#" GenPrimOp Int# -> Int# -> Int#
          {Shift right logical.  Result undefined if shift amount is not
           in the range 0 to word size - 1 inclusive.}
 
@@ -698,21 +698,21 @@ primop   WordQuotRem2Op "quotRemWord2#" GenPrimOp
            Requires that high word < divisor.}
    with can_fail = True
 
-primop   AndOp   "and#"   GenPrimOp   Word# -> Word# -> Word#
+primop   WordAndOp   "and#"   GenPrimOp   Word# -> Word# -> Word#
    with commutable = True
 
-primop   OrOp   "or#"   GenPrimOp   Word# -> Word# -> Word#
+primop   WordOrOp   "or#"   GenPrimOp   Word# -> Word# -> Word#
    with commutable = True
 
-primop   XorOp   "xor#"   GenPrimOp   Word# -> Word# -> Word#
+primop   WordXorOp   "xor#"   GenPrimOp   Word# -> Word# -> Word#
    with commutable = True
 
-primop   NotOp   "not#"   GenPrimOp   Word# -> Word#
+primop   WordNotOp   "not#"   GenPrimOp   Word# -> Word#
 
-primop   SllOp   "uncheckedShiftL#"   GenPrimOp   Word# -> Int# -> Word#
+primop   WordSllOp   "uncheckedShiftL#"   GenPrimOp   Word# -> Int# -> Word#
          {Shift left logical.   Result undefined if shift amount is not
           in the range 0 to word size - 1 inclusive.}
-primop   SrlOp   "uncheckedShiftRL#"   GenPrimOp   Word# -> Int# -> Word#
+primop   WordSrlOp   "uncheckedShiftRL#"   GenPrimOp   Word# -> Int# -> Word#
          {Shift right logical.   Result undefined if shift  amount is not
           in the range 0 to word size - 1 inclusive.}
 
