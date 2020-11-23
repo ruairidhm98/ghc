@@ -416,7 +416,7 @@ ocVerifyImage_ELF ( ObjectCode* oc )
              "\nSection header table: start %ld, n_entries %d, ent_size %d\n",
              (long)ehdr->e_shoff, shnum, ehdr->e_shentsize  ));
 
-   ASSERT(ehdr->e_shentsize == sizeof(Elf_Shdr));
+   CHECK(ehdr->e_shentsize == sizeof(Elf_Shdr));
 
    shdr = (Elf_Shdr*) (ehdrC + ehdr->e_shoff);
 
@@ -537,7 +537,7 @@ ocVerifyImage_ELF ( ObjectCode* oc )
 #if defined(SHN_XINDEX)
          /* See Note [Many ELF Sections] */
          if (secno == SHN_XINDEX) {
-            ASSERT(shndxTable);
+            CHECK(shndxTable);
             secno = shndxTable[j];
          }
 #endif
@@ -859,7 +859,7 @@ ocGetNames_ELF ( ObjectCode* oc )
                             PROT_READ | PROT_WRITE,
                             MAP_ANON | MAP_PRIVATE,
                             -1, 0);
-          ASSERT(common_mem != NULL);
+          CHECK(common_mem != NULL);
       }
 
       //TODO: we ignore local symbols anyway right? So we can use the
@@ -888,7 +888,7 @@ ocGetNames_ELF ( ObjectCode* oc )
                secno = shndx;
 #if defined(SHN_XINDEX)
                if (shndx == SHN_XINDEX) {
-                  ASSERT(shndxTable);
+                  CHECK(shndxTable);
                   secno = shndxTable[j];
                }
 #endif
@@ -897,11 +897,11 @@ ocGetNames_ELF ( ObjectCode* oc )
 
                if (shndx == SHN_COMMON) {
                    isLocal = false;
-                   ASSERT(common_used < common_size);
-                   ASSERT(common_mem);
+                   CHECK(common_used < common_size);
+                   CHECK(common_mem);
                    symbol->addr = (void*)((uintptr_t)common_mem + common_used);
                    common_used += symbol->elf_sym->st_size;
-                   ASSERT(common_used <= common_size);
+                   CHECK(common_used <= common_size);
 
                    IF_DEBUG(linker,
                             debugBelch("COMMON symbol, size %ld name %s allocated at %p\n",
@@ -930,7 +930,7 @@ ocGetNames_ELF ( ObjectCode* oc )
                           )
                        ) {
                    /* Section 0 is the undefined section, hence > and not >=. */
-                   ASSERT(secno > 0 && secno < shnum);
+                   CHECK(secno > 0 && secno < shnum);
                    /*
                    if (shdr[secno].sh_type == SHT_NOBITS) {
                       debugBelch("   BSS symbol, size %d off %d name %s\n",
@@ -957,7 +957,7 @@ ocGetNames_ELF ( ObjectCode* oc )
                /* And the decision is ... */
 
                if (symbol->addr != NULL) {
-                   ASSERT(nm != NULL);
+                   CHECK(nm != NULL);
                    /* Acquire! */
                    if (!isLocal) {
 
@@ -1040,7 +1040,7 @@ do_Elf_Rel_relocations ( ObjectCode* oc, char* ehdrC,
            break;
        }
    }
-   ASSERT(stab != NULL);
+   CHECK(stab != NULL);
 
    targ  = (Elf_Word*)oc->sections[target_shndx].start;
    IF_DEBUG(linker,debugBelch(
@@ -1246,7 +1246,7 @@ do_Elf_Rel_relocations ( ObjectCode* oc, char* ehdrC,
                result = ((S + A) | T) - P;
                result &= ~1; // Clear thumb indicator bit
 
-               ASSERT(isInt(26, result)); /* X in range */
+               CHECK(isInt(26, result)); /* X in range */
            }
 
            // Update the branch target
@@ -1421,7 +1421,7 @@ do_Elf_Rel_relocations ( ObjectCode* oc, char* ehdrC,
        case COMPAT_R_ARM_GOT_PREL: {
               int32_t A = *pP;
               void* GOT_S = symbol->got_addr;
-              ASSERT(GOT_S);
+              CHECK(GOT_S);
               *(uint32_t *)P = (uint32_t) GOT_S + A - P;
               break;
        }
@@ -1547,21 +1547,21 @@ do_Elf_Rela_relocations ( ObjectCode* oc, char* ehdrC,
          case R_SPARC_WDISP30:
             w1 = *pP & 0xC0000000;
             w2 = (Elf_Word)((value - P) >> 2);
-            ASSERT((w2 & 0xC0000000) == 0);
+            CHECK((w2 & 0xC0000000) == 0);
             w1 |= w2;
             *pP = w1;
             break;
          case R_SPARC_HI22:
             w1 = *pP & 0xFFC00000;
             w2 = (Elf_Word)(value >> 10);
-            ASSERT((w2 & 0xFFC00000) == 0);
+            CHECK((w2 & 0xFFC00000) == 0);
             w1 |= w2;
             *pP = w1;
             break;
          case R_SPARC_LO10:
             w1 = *pP & ~0x3FF;
             w2 = (Elf_Word)(value & 0x3FF);
-            ASSERT((w2 & ~0x3FF) == 0);
+            CHECK((w2 & ~0x3FF) == 0);
             w1 |= w2;
             *pP = w1;
             break;
@@ -1861,12 +1861,12 @@ ocResolve_ELF ( ObjectCode* oc )
                 Elf_Word secno = symbol->elf_sym->st_shndx;
 #if defined(SHN_XINDEX)
                 if (secno == SHN_XINDEX) {
-                    ASSERT(shndxTable);
+                    CHECK(shndxTable);
                     secno = shndxTable[i];
                 }
 #endif
-                ASSERT(symbol->elf_sym->st_name == 0);
-                ASSERT(symbol->elf_sym->st_value == 0);
+                CHECK(symbol->elf_sym->st_name == 0);
+                CHECK(symbol->elf_sym->st_value == 0);
                 symbol->addr = oc->sections[ secno ].start;
             }
         }
