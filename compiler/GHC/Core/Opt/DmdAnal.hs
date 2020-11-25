@@ -575,7 +575,7 @@ strict in |y|.
 -- or not. Other top-level bindings are boring.
 isInterestingTopLevelFn :: Id -> Bool
 isInterestingTopLevelFn id =
-  typeArity (idType id) `lengthExceeds` 0
+  typeArity (idType id) `lengthExceeds` 0 || True
 
 dmdTransform :: AnalEnv         -- ^ The strictness environment
              -> Id              -- ^ The function
