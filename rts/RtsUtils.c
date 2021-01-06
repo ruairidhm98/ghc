@@ -38,6 +38,7 @@ extern char *ctime_r(const time_t *, char *);
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #if defined(HAVE_SIGNAL_H)
 #include <signal.h>
@@ -50,6 +51,27 @@ extern char *ctime_r(const time_t *, char *);
 
 #if defined(_WIN32)
 #include <windows.h>
+#endif
+
+#if HAVE_LIBNUMA
+
+#include <numa.h>
+#include <numaif.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
+void allocaterProfiler(void *space);
+
+void allocaterProfiler(void *space)
+{
+  // Only called when space is not NULL (checks done in below functions), no need to check again
+  // Need to discover location of calling code and where the page was allocated,
+  int callingNode, targetNode;
+  syscall(SYS_getcpu, NULL, &callingNode, NULL);
+  get_mempolicy(&targetNode, NULL, 0, space, MPOL_F_NODE | MPOL_F_ADDR);
+  printf("Region %d allocating on %d\n", callingNode, targetNode);   
+}
+
 #endif
 
 /* -----------------------------------------------------------------------------
