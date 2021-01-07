@@ -295,6 +295,26 @@ initCapability (Capability *cap, uint32_t i)
         cap->mut_lists[g] = NULL;
     }
 
+    // Initialise the 1D array if NUMA support is enabled
+    if (RtsFlags.GcFlags.numa)
+    {
+        for (int i = 0; i < MAX_NUMA_NODES; ++i)
+        {
+            cap->numaAllocCounters[i] = 0;
+        }
+    }
+    else
+    {
+        for (int i = 0; i < MAX_NUMA_NODES; ++i)
+        {
+            for (int j = 0; j < MAX_NUMA_NODES; ++j)
+            {
+                cap->numaAllocMatrix[i][j] = 0;
+            }
+        }
+    }
+    
+
     cap->weak_ptr_list_hd = NULL;
     cap->weak_ptr_list_tl = NULL;
     cap->free_tvar_watch_queues = END_STM_WATCH_QUEUE;
@@ -1121,6 +1141,28 @@ shutdownCapabilities(Task *task, bool safe)
 static void
 freeCapability (Capability *cap)
 {
+    // Output numa statistics before destroying capability
+    if (RtsFlags.GcFlags.numa)
+    {
+        printf("Capability on region %d allocation metrics\n", cap->node);
+        for (int i = 0; i < MAX_NUMA_NODES; ++i)
+        {
+            printf("%llu ", cap->numaAllocCounters[i]);
+        }
+        printf("\n");
+    }
+    else
+    {
+        printf("Allocation matrix for capability %d\n", cap->no);
+        for (int i = 0; i < MAX_NUMA_NODES; ++i)
+        {
+            for (int j = 0;j < MAX_NUMA_NODES; ++j)
+            {
+                printf("%llu ", cap->numaAllocMatrix[i][j]);
+            }
+            printf("\n");
+        }
+    }
     stgFree(cap->mut_lists);
     stgFree(cap->saved_mut_lists);
 #if defined(THREADED_RTS)
