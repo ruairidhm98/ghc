@@ -63,8 +63,6 @@ extern char *ctime_r(const time_t *, char *);
 #include <unistd.h>
 #include <stdatomic.h>
 
-void allocaterProfiler(void *space);
-
 void allocaterProfiler(void *space)
 {
     // Only called when space is not NULL (checks done in below functions), no need to check again
@@ -121,6 +119,7 @@ stgMallocBytes (size_t n, char *msg)
       rtsConfig.mallocFailHook((W_) n, msg);
       stg_exit(EXIT_INTERNAL_ERROR);
     }
+    allocaterProfiler(space);
     IF_DEBUG(sanity, memset(space, 0xbb, n));
     return space;
 }
@@ -135,6 +134,7 @@ stgReallocBytes (void *p, size_t n, char *msg)
       rtsConfig.mallocFailHook((W_) n, msg);
       stg_exit(EXIT_INTERNAL_ERROR);
     }
+    allocaterProfiler(space);
     return space;
 }
 
@@ -148,6 +148,7 @@ stgCallocBytes (size_t n, size_t m, char *msg)
       rtsConfig.mallocFailHook((W_) n*m, msg);
       stg_exit(EXIT_INTERNAL_ERROR);
     }
+    allocaterProfiler(space);
     return space;
 }
 

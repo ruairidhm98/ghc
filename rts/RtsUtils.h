@@ -17,6 +17,8 @@
 void initAllocator(void);
 void shutdownAllocator(void);
 
+void allocaterProfiler(void *space);
+
 void *stgMallocBytes(size_t n, char *msg)
     GNUC3_ATTRIBUTE(__malloc__);
 
