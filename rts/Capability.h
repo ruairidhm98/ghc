@@ -112,6 +112,7 @@ struct Capability_ {
     // See [Note allocation accounting] in Storage.c
     W_ total_allocated;
 
+#if defined(NUMA_PROFILER)
     // Keep track of the allocations from this capability to each region.
     // Used only when numa awareness is switched on as we know the node
     // the current capability resides on. This avoid having to syscall
@@ -121,6 +122,7 @@ struct Capability_ {
     // enabled. Since capabilities wo't be capped to regions, they can be moved
     // about freely and hence we need to know where the capability resides
     uint64_t numaAllocMatrix[MAX_NUMA_NODES][MAX_NUMA_NODES];
+#endif
 
 #if defined(THREADED_RTS)
     // Worker Tasks waiting in the wings.  Singly-linked.

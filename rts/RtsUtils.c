@@ -53,6 +53,8 @@ extern char *ctime_r(const time_t *, char *);
 #include <windows.h>
 #endif
 
+#if defined(NUMA_PROFILER)
+
 #include "Capability.h"
 #include "rts/Flags.h"
 #include "Task.h"
@@ -62,6 +64,7 @@ extern char *ctime_r(const time_t *, char *);
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <stdatomic.h>
+
 
 void allocaterProfiler(void *space)
 {
@@ -92,6 +95,8 @@ void allocaterProfiler(void *space)
     }
 }
 
+#endif
+
 /* -----------------------------------------------------------------------------
    Result-checking malloc wrappers.
    -------------------------------------------------------------------------- */
@@ -119,7 +124,9 @@ stgMallocBytes (size_t n, char *msg)
       rtsConfig.mallocFailHook((W_) n, msg);
       stg_exit(EXIT_INTERNAL_ERROR);
     }
+#if defined(NUMA_PROFILER)
     allocaterProfiler(space);
+#endif
     IF_DEBUG(sanity, memset(space, 0xbb, n));
     return space;
 }
@@ -134,7 +141,9 @@ stgReallocBytes (void *p, size_t n, char *msg)
       rtsConfig.mallocFailHook((W_) n, msg);
       stg_exit(EXIT_INTERNAL_ERROR);
     }
+#if defined(NUMA_PROFILER)
     allocaterProfiler(space);
+#endif
     return space;
 }
 
@@ -148,7 +157,9 @@ stgCallocBytes (size_t n, size_t m, char *msg)
       rtsConfig.mallocFailHook((W_) n*m, msg);
       stg_exit(EXIT_INTERNAL_ERROR);
     }
+#if defined(NUMA_PROFILER)
     allocaterProfiler(space);
+#endif
     return space;
 }
 

@@ -295,6 +295,7 @@ initCapability (Capability *cap, uint32_t i)
         cap->mut_lists[g] = NULL;
     }
 
+#if defined(NUMA_PROFILER)
     // Initialise the 1D array if NUMA support is enabled
     if (RtsFlags.GcFlags.numa)
     {
@@ -313,7 +314,7 @@ initCapability (Capability *cap, uint32_t i)
             }
         }
     }
-    
+#endif
 
     cap->weak_ptr_list_hd = NULL;
     cap->weak_ptr_list_tl = NULL;
@@ -1141,6 +1142,7 @@ shutdownCapabilities(Task *task, bool safe)
 static void
 freeCapability (Capability *cap)
 {
+#if defined(NUMA_PROFILER)
     // Output numa statistics before destroying capability
     if (RtsFlags.GcFlags.numa)
     {
@@ -1163,6 +1165,7 @@ freeCapability (Capability *cap)
             printf("\n");
         }
     }
+#endif
     stgFree(cap->mut_lists);
     stgFree(cap->saved_mut_lists);
 #if defined(THREADED_RTS)
