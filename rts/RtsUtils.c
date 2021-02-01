@@ -63,36 +63,12 @@ extern char *ctime_r(const time_t *, char *);
 #include <numaif.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <stdatomic.h>
 
-
-void allocaterProfiler(void *space)
+inline int discoverNumaRegion(void *space)
 {
-    // Only called when space is not NULL (checks done in below functions), no need to check again
-    // Need to discover location of calling code and where the page was allocated,
-    // Get the current task and corresponding capability to update approriate counters
-    Task *t = myTask();
-    if (t != NULL)
-    {
-        Capability *cap = t->cap;
-        if (cap != NULL)
-        {
-            int targetNode;
-            get_mempolicy(&targetNode, NULL, 0, space, MPOL_F_NODE | MPOL_F_ADDR);
-            // If NUMA support is added, we already know the location of the capability
-            if (RtsFlags.GcFlags.numa)
-            {
-                ++(cap->numaAllocCounters[targetNode]);
-            }
-            else
-            {
-                int callingNode;
-                syscall(SYS_getcpu, NULL, &callingNode, NULL);
-                ++(cap->numaAllocMatrix[callingNode][targetNode]);
-            }
-        }
-        
-    }
+    int targetNode;
+    get_mempolicy(&targetNode, NULL, 0, space, MPOL_F_NODE | MPOL_F_ADDR);
+    return targetNode;
 }
 
 #endif
@@ -124,9 +100,7 @@ stgMallocBytes (size_t n, char *msg)
       rtsConfig.mallocFailHook((W_) n, msg);
       stg_exit(EXIT_INTERNAL_ERROR);
     }
-#if defined(NUMA_PROFILER)
-    allocaterProfiler(space);
-#endif
+
     IF_DEBUG(sanity, memset(space, 0xbb, n));
     return space;
 }
@@ -141,9 +115,7 @@ stgReallocBytes (void *p, size_t n, char *msg)
       rtsConfig.mallocFailHook((W_) n, msg);
       stg_exit(EXIT_INTERNAL_ERROR);
     }
-#if defined(NUMA_PROFILER)
-    allocaterProfiler(space);
-#endif
+
     return space;
 }
 
@@ -157,9 +129,7 @@ stgCallocBytes (size_t n, size_t m, char *msg)
       rtsConfig.mallocFailHook((W_) n*m, msg);
       stg_exit(EXIT_INTERNAL_ERROR);
     }
-#if defined(NUMA_PROFILER)
-    allocaterProfiler(space);
-#endif
+
     return space;
 }
 

@@ -10,6 +10,7 @@
  *   http://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Storage/GC
  *
  * ---------------------------------------------------------------------------*/
+#define THREADED_RTS
 
 #include "PosixSource.h"
 #include "Rts.h"
@@ -123,7 +124,7 @@ uint32_t mutlist_MUTVARS,
 gc_thread **gc_threads = NULL;
 
 #if !defined(THREADED_RTS)
-StgWord8 the_gc_thread[sizeof(gc_thread) + 64 * sizeof(gen_workspace)];
+StgWord8 the_gc_thread[sizeof(gc_thread) + 64 * sizeof(gen_workspace)];free
 #endif
 
 // Number of threads running in *this* GC.  Affects how many
@@ -211,6 +212,18 @@ GarbageCollect (uint32_t collect_gen,
     // block signals
     blockUserSignals();
   }
+#endif
+
+#if defined(NUMA_PROFILER)
+    // Update garbage collection frequency statistics
+    if (RtsFlags.GcFlags.numa)
+    {
+        ++(cap->gcFrequency);
+    }
+    else
+    {
+        ++(cap->gcFrequencyPerRegion[i]);
+    }
 #endif
 
   ASSERT(sizeof(gen_workspace) == 16 * sizeof(StgWord));
@@ -419,7 +432,7 @@ GarbageCollect (uint32_t collect_gen,
       break;
   }
 
-  shutdown_gc_threads(gct->thread_index, idle_cap);
+  shutdown_gc_threads(gct->thread_index, idle_cap, cap);
 
   // Now see which stable names are still alive.
   gcStableTables();
@@ -1206,7 +1219,8 @@ wakeup_gc_threads (uint32_t me USED_IF_THREADS,
 // any_work(), and may even remain awake until the next GC starts.
 static void
 shutdown_gc_threads (uint32_t me USED_IF_THREADS,
-                     bool idle_cap[] USED_IF_THREADS)
+                     bool idle_cap[] USED_IF_THREADS,
+                     Capability *cap)
 {
 #if defined(THREADED_RTS)
     uint32_t i;
@@ -1214,6 +1228,9 @@ shutdown_gc_threads (uint32_t me USED_IF_THREADS,
     if (n_gc_threads == 1) return;
 
     for (i=0; i < n_gc_threads; i++) {
+#if defined(NUMA_PROFILER)
+        addGcLocalityStats(cap, gc_threads[i]->numa_locality);
+#endif
         if (i == me || idle_cap[i]) continue;
         while (gc_threads[i]->wakeup != GC_THREAD_WAITING_TO_CONTINUE) {
             busy_wait_nop();
@@ -1505,6 +1522,12 @@ init_gc_thread (gc_thread *t)
     t->any_work = 0;
     t->no_work = 0;
     t->scav_find_work = 0;
+#if defined(NUMA_PROFILER)
+    for (int i = 0; i < MAX_NUMA_NODES; ++i)
+    {
+        t->numa_locality = stgCallocBytes(sizeof(uint64_t), RtsFlags.GcFlags.generations, "init_gc_thread");
+    }
+#endif
 }
 
 /* -----------------------------------------------------------------------------

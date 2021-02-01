@@ -15,7 +15,7 @@
 
 #include "WSDeque.h"
 #include "GetTime.h" // for Ticks
-
+#include "RtsUtils.h"
 #include "BeginPrivate.h"
 
 /* -----------------------------------------------------------------------------
@@ -131,6 +131,10 @@ typedef struct gc_thread_ {
     SpinLock   mut_spin;
     volatile StgWord wakeup;       // NB not StgWord8; only StgWord is guaranteed atomic
 #endif
+
+#if defined(NUMA_PROFILER)
+    uint64_t numa_locality[MAX_NUMA_NODES];
+#endif
     uint32_t thread_index;         // a zero based index identifying the thread
 
     bdescr * free_blocks;          // a buffer of free blocks for this thread
@@ -207,6 +211,18 @@ typedef struct gc_thread_ {
 extern uint32_t n_gc_threads;
 
 extern gc_thread **gc_threads;
+
+#if defined(NUMA_PROFILER)
+void updateGcLocality(gc_thread *thr, void *space, int gen_no);
+inline void updateGcLocality(gc_thread *thr, void *space, int gen_no)
+{
+    int region = discoverNumaRegion(space);
+    if (region >= 0 && region < MAX_NUMA_NODES)
+    {
+      ++(thr->numa_locality[region][gen_no]);
+    }
+}
+#endif
 
 #if defined(THREADED_RTS) && defined(llvm_CC_FLAVOR)
 extern ThreadLocalKey gctKey;

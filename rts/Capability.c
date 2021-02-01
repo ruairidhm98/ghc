@@ -296,23 +296,10 @@ initCapability (Capability *cap, uint32_t i)
     }
 
 #if defined(NUMA_PROFILER)
-    // Initialise the 1D array if NUMA support is enabled
-    if (RtsFlags.GcFlags.numa)
+    cap->gcFrequency = stgCallocBytes(sizeof(uint64_t), RtsFlags.GcFlags.generations, "initCapabilities");
+    for (int i = 0; i < MAX_NUMA_NODES; ++i)
     {
-        for (int i = 0; i < MAX_NUMA_NODES; ++i)
-        {
-            cap->numaAllocCounters[i] = 0;
-        }
-    }
-    else
-    {
-        for (int i = 0; i < MAX_NUMA_NODES; ++i)
-        {
-            for (int j = 0; j < MAX_NUMA_NODES; ++j)
-            {
-                cap->numaAllocMatrix[i][j] = 0;
-            }
-        }
+        cap->gcLocality[i] = stgCallocBytes(sizeof(uint64_t), RtsFlags.GcFlags.generations, "initCapabilities"));
     }
 #endif
 
@@ -343,6 +330,11 @@ initCapability (Capability *cap, uint32_t i)
 #if defined(THREADED_RTS)
     traceSparkCounters(cap);
 #endif
+}
+
+inline void updateGcFrequency(Capability *cap, int generation)
+{
+    ++(cap->gcFrequency[generation]);
 }
 
 /* ---------------------------------------------------------------------------
@@ -713,6 +705,20 @@ static Capability * waitForWorkerCapability (Task *task)
 }
 
 #endif /* THREADED_RTS */
+
+#if defined(NUMA_PROFILER)
+    inline void addGcLocalityStats(Capability *cap, uint64_t *gcStats[MAX_NUMA_NODES])
+    {
+        for (int i = 0; i < MAX_NUMA_NODES; ++i)
+        {
+            for (int j = 0; j < RtsFlags.GcFlags.generations)
+            {
+                cap->gcLocality += gcStats[i][j];
+            }
+        }
+    }
+#endif
+
 
 /* ----------------------------------------------------------------------------
  * waitForReturnCapability (Task *task)

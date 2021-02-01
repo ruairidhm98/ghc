@@ -515,7 +515,7 @@ evacuate_compact (StgPtr p)
    ------------------------------------------------------------------------- */
 
 REGPARM1 GNUC_ATTR_HOT void
-evacuate(StgClosure **p)
+evacuate(StgClosure **p, gc_thread *thr)
 {
   bdescr *bd = NULL;
   uint32_t gen_no;
@@ -625,6 +625,9 @@ loop:
   }
 
   gen_no = bd->dest_no;
+#if defined(NUMA_PROFILER)
+  updateGcLocality(thr, (void*)q, gen_no);
+#endif
 
   info = q->header.info;
   if (IS_FORWARDING_PTR(info))

@@ -26,6 +26,8 @@
 
 #include "BeginPrivate.h"
 
+#include <stdatomic.h>
+
 struct Capability_ {
     // State required by the STG virtual machine when running Haskell
     // code.  During STG execution, the BaseReg register always points
@@ -113,15 +115,13 @@ struct Capability_ {
     W_ total_allocated;
 
 #if defined(NUMA_PROFILER)
-    // Keep track of the allocations from this capability to each region.
-    // Used only when numa awareness is switched on as we know the node
-    // the current capability resides on. This avoid having to syscall
-    uint64_t numaAllocCounters[MAX_NUMA_NODES];
+    // Keep track of the garbage collection frequency per generation
+    uint64_t *gcFrequency;
 
-    // Allocation matrix for this capability. Used when no NUMA awareness is
-    // enabled. Since capabilities wo't be capped to regions, they can be moved
-    // about freely and hence we need to know where the capability resides
-    uint64_t numaAllocMatrix[MAX_NUMA_NODES][MAX_NUMA_NODES];
+    // Garbage collection thread locality statistics, for NUMA support. Multiple GC threads may try
+    // to update this, so atomic counters are best used to handle this instead of locks
+    uint64_t *gcLocality[MAX_NUMA_NODES];
+
 #endif
 
 #if defined(THREADED_RTS)
@@ -177,6 +177,10 @@ struct Capability_ {
   ATTRIBUTE_ALIGNED(64)
 #endif
   ;
+
+#if defined(NUMA_PROFILER)
+    void addGcLocalityStats(Capability *cap, int region);
+#endif
 
 #if defined(THREADED_RTS)
 #define ASSERT_TASK_ID(task) ASSERT(task->id == osThreadId())

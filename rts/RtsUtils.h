@@ -17,7 +17,13 @@
 void initAllocator(void);
 void shutdownAllocator(void);
 
+#if defined(NUMA_PROFILER)
+
 void allocaterProfiler(void *space);
+
+int discoverNumaRegion(void* space);
+
+#endif
 
 void *stgMallocBytes(size_t n, char *msg)
     GNUC3_ATTRIBUTE(__malloc__);

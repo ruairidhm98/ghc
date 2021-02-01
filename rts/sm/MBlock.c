@@ -18,6 +18,8 @@
 
 #include <string.h>
 
+#define THREADED_RTS
+
 W_ peak_mblocks_allocated = 0;
 W_ mblocks_allocated = 0;
 W_ mpc_misses = 0;

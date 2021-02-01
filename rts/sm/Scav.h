@@ -15,7 +15,12 @@
 
 #include "BeginPrivate.h"
 
+#if defined(NUMA_PROFILER)
+void    scavenge_loop (gc_thread *thr);
+#else
 void    scavenge_loop (void);
+#endif
+
 void    scavenge_capability_mut_lists (Capability *cap);
 
 #if defined(THREADED_RTS)
